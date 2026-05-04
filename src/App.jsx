@@ -41,7 +41,7 @@ function App() {
       setRecentHistory(history);
     }
 
-    const payloadData = question || selectedHistory;
+  const payloadData = question || selectedHistory;
 
     const payload = {
       contents: [{ parts: [{ text: payloadData }] }],
@@ -49,24 +49,42 @@ function App() {
 
     setLoader(true);
 
-    let response = await fetch(URL, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    try {
+      let res = await fetch(URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", // ✅ FIX
+        },
+        body: JSON.stringify(payload),
+      });
 
-    response = await response.json();
+      const data = await res.json();
 
-    let dataString = response.candidates[0].content.parts[0].text;
-    dataString = dataString.split("* ").map((item) => item.trim());
+      // ✅ ERROR CHECK (IMPORTANT)
+      if (!res.ok) {
+        console.error("API Error:", data);
+        setLoader(false);
+        return;
+      }
 
-    // ✅ STATE UPDATE FIX (IMPORTANT)
-    setResult((prev) => [
-      ...prev,
-      { type: "q", text: payloadData },
-      { type: "a", text: dataString },
-    ]);
+      // ✅ SAFE ACCESS
+      let dataString =
+        data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
 
-    setQuestion("");
+      dataString = dataString?.split("* ")?.map((item) => item.trim());
+
+      // ✅ STATE UPDATE
+      setResult((prev) => [
+        ...prev,
+        { type: "q", text: payloadData },
+        { type: "a", text: dataString },
+      ]);
+
+      setQuestion("");
+    } catch (error) {
+      console.error("Fetch Error:", error);
+    }
+
     setLoader(false);
   };
 
